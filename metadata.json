@@ -1,0 +1,5 @@
+{
+  "name": "NexGen AI Productivity Suite",
+  "description": "A comprehensive multi-agent workspace featuring ATS Resume Optimization, Content Humanization (Plagiarism Remover), and Deep SEO Analysis using Google Gemini.",
+  "requestFramePermissions": []
+}
