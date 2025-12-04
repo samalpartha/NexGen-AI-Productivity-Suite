@@ -3,7 +3,9 @@ import { ActiveTool } from './types';
 import ResumeOptimizer from './components/ResumeOptimizer';
 import ContentHumanizer from './components/ContentHumanizer';
 import SeoOptimizer from './components/SeoOptimizer';
-import { FileText, Edit3, BarChart, Bot, Menu, X } from 'lucide-react';
+import BackgroundRemover from './components/BackgroundRemover';
+import LatexConverter from './components/LatexConverter';
+import { FileText, Edit3, BarChart, Bot, Menu, X, Layers, FileCode } from 'lucide-react';
 
 const App: React.FC = () => {
   const [activeTool, setActiveTool] = useState<ActiveTool>(ActiveTool.RESUME_OPTIMIZER);
@@ -15,6 +17,8 @@ const App: React.FC = () => {
     { id: ActiveTool.RESUME_OPTIMIZER, label: 'Resume Scanner', icon: <FileText className="w-5 h-5" /> },
     { id: ActiveTool.CONTENT_HUMANIZER, label: 'Plagiarism Remover', icon: <Edit3 className="w-5 h-5" /> },
     { id: ActiveTool.SEO_ANALYZER, label: 'SEO Optimizer', icon: <BarChart className="w-5 h-5" /> },
+    { id: ActiveTool.BACKGROUND_REMOVER, label: 'BG Remover', icon: <Layers className="w-5 h-5" /> },
+    { id: ActiveTool.LATEX_CONVERTER, label: 'LaTeX Converter', icon: <FileCode className="w-5 h-5" /> },
   ];
 
   const renderContent = () => {
@@ -22,6 +26,8 @@ const App: React.FC = () => {
       case ActiveTool.RESUME_OPTIMIZER: return <ResumeOptimizer />;
       case ActiveTool.CONTENT_HUMANIZER: return <ContentHumanizer />;
       case ActiveTool.SEO_ANALYZER: return <SeoOptimizer />;
+      case ActiveTool.BACKGROUND_REMOVER: return <BackgroundRemover />;
+      case ActiveTool.LATEX_CONVERTER: return <LatexConverter />;
       default: return <ResumeOptimizer />;
     }
   };
