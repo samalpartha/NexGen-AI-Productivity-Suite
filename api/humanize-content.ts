@@ -102,9 +102,18 @@ Provide your response in the following JSON format (respond ONLY with valid JSON
 
     } catch (error: any) {
         console.error("Humanization failed:", error);
+
+        // Log the full error for debugging
+        console.error("Full error details:", {
+            message: error.message,
+            stack: error.stack,
+            response: error.response,
+        });
+
         return res.status(500).json({
             error: 'Humanization failed',
-            message: error.message || 'Unknown error'
+            message: error.message || 'Unknown error',
+            details: error.toString()
         });
     }
 }
