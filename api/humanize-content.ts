@@ -86,9 +86,9 @@ Provide your response in the following JSON format (respond ONLY with valid JSON
   "plagiarismRiskScore": <number 96-99>
 }`;
 
-        // Use Llama 3.1 70B for content humanization
+        // Use Mixtral 8x7B for content humanization (more accessible than Llama)
         const response = await hf.chatCompletion({
-            model: "meta-llama/Llama-3.1-70B-Instruct",
+            model: "mistralai/Mixtral-8x7B-Instruct-v0.1",
             messages: [
                 { role: "user", content: prompt }
             ],
