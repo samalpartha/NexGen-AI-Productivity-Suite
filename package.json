@@ -15,7 +15,8 @@
     "lucide-react": "^0.555.0",
     "@google/genai": "^1.31.0",
     "mammoth": "1.8.0",
-    "jspdf": "2.5.1"
+    "jspdf": "2.5.1",
+    "docx": "8.5.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

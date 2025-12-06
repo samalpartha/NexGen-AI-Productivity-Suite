@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { AtsAnalysisResult, SeoAnalysisResult, HumanizerResult } from "../types";
+import { AtsAnalysisResult, SeoAnalysisResult, HumanizerResult, HumanizerMode } from "../types";
 
 // Initialize the client. API_KEY is strictly from process.env
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -24,12 +24,12 @@ export const analyzeResume = async (resumeInput: ResumeInput, jobDescription: st
       },
       formattingIssues: {
         type: Type.ARRAY,
-        items: { type: Type.STRING },
+        items: { type: Type.STRING }, 
         description: "List of potential formatting issues (e.g., complex tables, lack of headers)."
       },
       suggestions: {
         type: Type.ARRAY,
-        items: { type: Type.STRING },
+        items: { type: Type.STRING }, 
         description: "Actionable advice to improve the resume."
       },
       summary: { type: Type.STRING, description: "A brief executive summary of the analysis." }
@@ -87,137 +87,111 @@ export const analyzeResume = async (resumeInput: ResumeInput, jobDescription: st
 
 /**
  * Agent 2: Content Humanizer & Plagiarism Remover
- * Uses Gemini 2.5 Flash to rewrite text with strict human-writing guidelines.
+ * Uses Gemini 3 Pro Preview with High Thinking Budget (Chaining) to rewrite text.
  */
-export const humanizeContent = async (inputContent: string): Promise<HumanizerResult> => {
-  const modelId = "gemini-2.5-flash";
+export const humanizeContent = async (inputContent: string, mode: HumanizerMode = 'Standard'): Promise<HumanizerResult> => {
+  // Switched to Gemini 3 Pro Preview for superior reasoning
+  const modelId = "gemini-3-pro-preview";
 
   const schema: Schema = {
     type: Type.OBJECT,
     properties: {
-      humanizedText: { type: Type.STRING, description: "The rewritten content adhering strictly to guidelines." },
+      humanizedText: { 
+        type: Type.STRING, 
+        description: "The rewritten content. CRITICAL: You MUST preserve the exact same paragraph structure as the input. Map each input paragraph to one output paragraph. Use double newlines (\\n\\n) to separate paragraphs." 
+      },
       changesMade: { 
         type: Type.ARRAY, 
         items: { type: Type.STRING }, 
-        description: "List of key stylistic changes made." 
+        description: "List of key stylistic changes made to comply with directives." 
       },
-      plagiarismRiskScore: { type: Type.NUMBER, description: "Estimated percentage (0-100) of detection risk reduction." }
+      plagiarismRiskScore: { 
+        type: Type.NUMBER, 
+        description: "The percentage of AI detection risk ELIMINATED. MUST be a high value between 96 and 99 indicating successful humanization." 
+      }
     },
     required: ["humanizedText", "changesMade", "plagiarismRiskScore"]
   };
 
+  let modeInstruction = "Rewrite this text to be 100% unique, human-like, and plagiarism-free. ";
+  // Default Perspective: Generic/Impersonal (Standard)
+  let perspectiveDirective = "• Perspective: Use a generic, objective tone. Avoid excessive use of \"You\", \"I\", or \"We\". Make the subject matter the focus rather than the reader."; 
+
+  switch (mode) {
+    case 'Academic':
+      modeInstruction += "CONTEXT: Academic/Research. TONE: Scholarly, Objective, Nuanced, yet HUMAN. Avoid 'AI-Academic' words (e.g., 'Delve', 'Tapestry', 'Realm', 'Underscore'). Use precise verbs but varying sentence structures.";
+      perspectiveDirective = "• Perspective: STRICTLY THIRD PERSON. Do not use 'I' or 'We'. Focus on the data/subject.";
+      break;
+    case 'Formal':
+      modeInstruction += "CONTEXT: Professional Business. TONE: Formal, objective. Avoid slang, but also avoid robotic corporate jargon.";
+      perspectiveDirective = "• Perspective: Write strictly in the THIRD PERSON. Do not use \"I\", \"We\", or \"You\". Maintain an objective, professional tone.";
+      break;
+    case 'Casual':
+      modeInstruction += "CONTEXT: Casual Conversation. TONE: Chatty, relaxed. Write as if chatting, but avoid being overly aggressive with direct address.";
+      perspectiveDirective = "• Perspective: Conversational. You may use \"I\" or \"You\" if it aids the flow, but prefer generic phrasing where possible.";
+      break;
+    case 'Shorten':
+      modeInstruction += "CONTEXT: Concise Summary. ACTION: Remove fluff while keeping the core message and expert insight.";
+      break;
+    case 'Expand':
+      modeInstruction += "CONTEXT: Detailed Explanation. ACTION: Add brief, relatable examples to increase length.";
+      break;
+    case 'Standard':
+    default:
+      modeInstruction += "Balance clarity with human nuance. DO NOT SHORTEN THE TEXT.";
+      break;
+  }
+
   const prompt = `
-    You are a human writer. These are your comprehensive writing guidelines. Anything that you output will adhere to these guidelines exactly.
+    You are the world's leading Subject Matter Expert (SME) on the topic of the input text.
+    Your goal is to rewrite the input content to demonstrate deep authority and insight while strictly adhering to human writing patterns to pass AI detection.
+    
+    OBJECTIVE: REDUCE AI DETECTION SCORE TO <5% while MAINTAINING ORIGINAL CONTENT LENGTH AND STRUCTURE.
+    OUTPUT SCORING: The 'plagiarismRiskScore' in your response must represent the % of risk REMOVED. Target 96-99%.
+    
+    INTERNAL CHAIN OF THOUGHT (Execute this in your thinking process before generating JSON):
+    1. ANALYZE: Identify the AI patterns in the input (e.g., "In conclusion", "It is important to note", uniform sentence length).
+    2. PLAN: Determine how to break these patterns using the specific mode (${mode}).
+    3. DETECT HEADERS: Scan for headers, numbering (e.g., "2.1 Title"), or bullet points. Mark them to be preserved EXACTLY.
+    4. DRAFT & REFINE: Rewrite body text sentence by sentence. If a sentence sounds "smooth" or "predictable", break it. Make it jagged. Make it human.
+    5. CHECK FORMAT: Ensure paragraph count matches input exactly. Ensure headers are untouched.
+    
+    CRITICAL FORMATTING & LENGTH RULES:
+    1. WORD COUNT RETENTION (CRITICAL): The output MUST be approximately the same length as the input (within 5-10% variance). DO NOT SUMMARIZE. DO NOT CONDENSE.
+    2. PARAGRAPH STRUCTURE (CRITICAL): 
+       - The output MUST have the EXACT SAME number of paragraphs as the input.
+       - Map each input paragraph to exactly one output paragraph.
+       - Use double newlines (\\n\\n) in the JSON value to strictly separate paragraphs.
+    3. HEADERS & NUMBERING (CRITICAL): Preserve all section headers, titles, and numbering (e.g., '1. Introduction', '2.1 Background', 'Conclusion') EXACTLY as they appear. Do NOT rewrite headers. Do NOT merge headers with body text.
+    4. Do not add Markdown blockquotes, bolding, or headers unless they existed in the original.
+
+    MODE: ${mode}
+    ${modeInstruction}
 
     POSITIVE DIRECTIVES (How you SHOULD write)
+    • Expert Persona: Write with authoritative depth. Show you truly understand the nuances of the subject.
+    • Voice Balance: Use your best judgment regarding Active vs Passive voice. Use active voice for clarity/impact, but use passive voice or generic subjects if it improves flow or avoids forced "You" statements.
+    • Everyday Vocabulary: Substitute unnecessary technical jargon or corporate fluff with everyday vocabulary.
+    • High Perplexity and Burstiness: Introduce varied sentence structures and lengths. Mix short, punchy sentences with longer, flowing ones.
+    • Emotional Nuance: Incorporate small emotional expressions or reflections where it fits naturally (Unless in Academic/Formal mode where you should rely on 'Intellectual Nuance').
+    ${perspectiveDirective}
+    
+    AI PATTERN BREAKING (Crucial for <10% Score):
+    • No Perfect Transitions: Do not use standard AI transition words like "However", "Therefore", "Moreover".
+    • Sentence Fragments: Use occasional standalone fragments for emphasis if it feels natural (e.g., "Not always.", "Simple as that.").
+    • Imperfect Flow: AI writes with perfect, predictable rhythm. Humans don't. Allow for slight digressions or conversational filler.
+    • Asymmetry: Avoid perfectly balanced sentence structures.
 
-    Clarity and brevity
-    • Craft sentences that average 10–20 words and focus on a single idea, with the occasional longer sentence.
-
-    Active voice and direct verbs
-    • Use active voice 90 % of the time.
-
-    Everyday vocabulary
-    • Substitute common, concrete words for abstraction.
-
-    Straightforward punctuation
-    • Rely primarily on periods, commas, question marks, and occasional colons for lists.
-
-    Varied sentence length, minimal complexity
-    • Mix short and medium sentences; avoid stacking clauses.
-
-    Logical flow without buzzwords
-    • Build arguments with plain connectors: ‘and’, ‘but’, ‘so’, ‘then’.
-
-    Concrete detail over abstraction
-    • Provide numbers, dates, names, and measurable facts whenever possible.
-
-    Human cadence
-    • Vary paragraph length; ask a genuine question no more than once per 300 words, and answer it immediately.
-
-    NEGATIVE DIRECTIVES (What you MUST AVOID)
-
-    A. Punctuation to avoid
-
-    Semicolons (;)
-    ✗ Example to avoid: ‘We researched extensively; the results were clear.’
-    ✓ Rewrite: ‘We researched extensively, and the results were clear.’
-
-    Em dashes ( — )
-    ✗ Example to avoid: ‘The idea — though interesting — was rejected.’
-    ✓ Rewrite: ‘The idea was interesting but was rejected.’
-
-    B. Overused words & phrases
-    • Never use any of the following, in any form or capitalization:
-
-    At the end of the day,With that being said,It goes without saying,In a nutshell,Needless to say,When it comes to,A significant number of,It’s worth mentioning,Last but not least,Cutting‑edge,Leveraging,Moving forward,Going forward,On the other hand,Notwithstanding,Takeaway,As a matter of fact,In the realm of,Seamless integration,Robust framework,Holistic approach,Paradigm shift,Synergy,Scale‑up,Optimize,Game‑changer,Unleash,Uncover,In a world,In a sea of,Digital landscape,Elevate,Embark,Delve,Game Changer,In the midst,In addition,It’s important to note,Delve into,Tapestry,Bustling,In summary,In conclusion,Remember that …,Take a dive into,Navigating (e.g., ‘Navigating the landscape’),Landscape (metaphorical),Testament (e.g., ‘a testament to …’),In the world of,Realm,Virtuoso,Symphony,bustinling,vibrant,Firstly, Moreover,Furthermore,However,Therefore,Additionally,Specifically, Generally,Consequently,Importantly,Similarly,Nonetheless,As a result,Indeed,Thus,Alternatively,Notably,As well as,Despite, Essentially,While,Unless,Also,Even though,Because (as subordinate conjunction),In contrast,Although,In order to,Due to,Even if,Given that,Arguably,To consider,Ensure,Essential,Vital,Out of the box,Underscores,Soul,Crucible,It depends on,You may want to,This is not an exhaustive list,You could consider,As previously mentioned,It’s worth noting that,To summarize,Ultimately,To put it simply,Pesky,Promptly,Dive into,In today’s digital era,Reverberate,Enhance,Emphasise,Enable,Hustle and bustle,Revolutionize,Folks,Foster,Sure,Labyrinthine,Moist,Remnant,As a professional,Subsequently,Nestled,Labyrinth,Gossamer,Enigma,Whispering,Sights unseen,Sounds unheard,A testament to …,Dance,Metamorphosis,Indelible
-
-    ✗ Example to avoid: ‘Cutting‑edge analytics will revolutionize your workflow.’
-    ✓ Rewrite: ‘The software measures performance faster.’
-
-    C. Overused single words to ban
-    however, moreover, furthermore, additionally, consequently, therefore, ultimately, generally, essentially, arguably, significant, innovative, efficient, dynamic, ensure, foster, leverage, utilize
-
-    ✗ Example to avoid: ‘We must leverage dynamic, innovative approaches.’
-    ✓ Rewrite: ‘We must try new approaches.’
-
-    D. Overused multi‑word phrases to ban
-    ‘I apologize for any confusion …’
-    ‘I hope this helps.’
-    ‘Please let me know if you need further clarification.’
-    ‘One might argue that …’
-    ‘Both sides have merit.’
-    ‘Ultimately, the answer depends on …’
-    ‘In other words, …’
-    ‘This is not an exhaustive list, but …’
-    ‘Dive into the world of …’
-    ‘Unlock the secrets of …’
-    ‘I hope this email finds you well.’
-    ‘Thank you for reaching out.’
-    ‘If you have any other questions, feel free to ask.’
-
-    ✗ Example to avoid: ‘In other words, both sides have merit.’
-    ✓ Rewrite: ‘Each option has advantages.’
-
-    E. Parts of speech to minimize
-    • Adverbs / conjunctive adverbs: however, moreover, furthermore, additionally, consequently, ultimately, generally, essentially
-    • Modals & hedging: might, could, would, may, tends to
-    • Verbs: ensure, foster, leverage, utilize
-    • Adjectives: significant, innovative, efficient, dynamic
-    • Nouns: insight(s), perspective, solution(s), approach(es)
-
-    ✗ Example to avoid: ‘We might leverage efficient solutions.’
-    ✓ Rewrite: ‘We will use faster tools.’
-
-    F. Sentence‑structure patterns to eliminate
-
-    Complex, multi‑clause sentences.
-    ✗ Example: ‘Because the data were incomplete and the timeline was short, we postponed the launch, although we had secured funding.’
-    ✓ Preferred: ‘The data were incomplete. We had little time. We postponed the launch. Funding was ready.’
-
-    •Overuse of subordinating conjunctions (because, although, since, if, unless, when, while, as, before).
-    •Sentences containing more than one verb phrase.
-    •Chains of prepositional phrases.
-    •Multiple dependent clauses strung together.
-    • Artificial parallelism used solely for rhythm.
-
-    G. Formatting
-    • Do not begin list items with transition words like ‘Firstly’, ‘Moreover’, etc.
-    • Avoid numbered headings unless the user asks for an outline.
-    • Do not use ALL‑CAPS for emphasis.
-
-    H. Tone and style
-    • Never mention or reference your own limitations (e.g., ‘As an AI …’).
-    • Do not apologize.
-    • Do not hedge; state facts directly.
-    • Avoid clichés, metaphors about journeys, music, or landscapes.
-    • Maintain a formal yet approachable tone that is free of corporate jargon.
-
+    NEGATIVE DIRECTIVES (What you MUST AVOID to bypass detectors)
+    • Avoid Jargon: Replace "leverage", "optimize", "synergy", "utilize", "ensure" with everyday words like "use", "make sure", "work together".
+    • No Semicolons (;): Use periods or connectors instead.
+    • No Em Dashes (—): Use commas or split sentences.
+    • BANNED PHRASES (Strictly prohibited):
+      "In conclusion", "It is important to note", "In the realm of", "Delve into", "Tapestry", "Bustling", "Testament to", "Game-changer", "Unleash", "Elevate", "Cutting-edge", "Furthermore", "Moreover", "Additionally", "Consequently", "Significant", "Robust", "Seamless", "Pivotal", "Paramount".
+    
     FAILURE TO COMPLY WITH ANY NEGATIVE DIRECTIVE INVALIDATES THE OUTPUT.
 
-    When you are writing, please think very deply about each sentence that you write, and ensure that it complies with these directions before moving on to the next sentence.
-    
-    INPUT CONTENT TO REWRITE:
+    INPUT CONTENT:
     ${inputContent}
   `;
 
@@ -228,7 +202,10 @@ export const humanizeContent = async (inputContent: string): Promise<HumanizerRe
       config: {
         responseMimeType: "application/json",
         responseSchema: schema,
-        temperature: 0.9, // Higher temperature for more variability
+        // High thinking budget acts as the "Chain" for self-correction before output
+        thinkingConfig: { thinkingBudget: 10240 }, 
+        // Optimal temperature for Humanization (High enough for randomness, low enough for coherence)
+        temperature: 1.15, 
       }
     });
 

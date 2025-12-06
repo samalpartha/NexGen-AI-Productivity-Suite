@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { convertDocument } from '../services/geminiService';
 import { FileText, ArrowRightLeft, Download, Upload, Loader2, Copy, FileCode, FileType } from 'lucide-react';
 import mammoth from 'mammoth';
-import { jsPDF } from "jspdf";
+import { Document, Packer, Paragraph, TextRun } from "docx";
 
 type ConversionMode = 'latex-to-word' | 'word-to-latex';
 
@@ -90,21 +90,26 @@ const LatexConverter: React.FC = () => {
       a.click();
       URL.revokeObjectURL(url);
     } else {
-      // Download as PDF using jsPDF
-      const doc = new jsPDF();
-      
-      const splitText = doc.splitTextToSize(outputText, 180);
-      let y = 10;
-      // Simple pagination
-      for(let i = 0; i < splitText.length; i++) {
-        if (y > 280) {
-          doc.addPage();
-          y = 10;
-        }
-        doc.text(splitText[i], 10, y);
-        y += 7;
-      }
-      doc.save("converted.pdf");
+      // Download as DOCX
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children: outputText.split('\n').map(line => 
+            new Paragraph({
+              children: [new TextRun(line)],
+            })
+          ),
+        }],
+      });
+
+      Packer.toBlob(doc).then((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'converted.docx';
+        a.click();
+        URL.revokeObjectURL(url);
+      });
     }
   };
 
@@ -128,10 +133,10 @@ const LatexConverter: React.FC = () => {
           <div>
             <div className="flex items-center gap-3 mb-2">
               <ArrowRightLeft className="w-6 h-6 text-orange-500" />
-              <h2 className="text-xl font-semibold text-white">LaTeX &lt;&gt; Word/PDF Converter</h2>
+              <h2 className="text-xl font-semibold text-white">LaTeX &lt;&gt; Word Converter</h2>
             </div>
             <p className="text-slate-400 text-sm">
-              Convert complex LaTeX documents to readable formats, or turn your documents into professional LaTeX code.
+              Convert complex LaTeX documents to Word (DOCX) format, or turn your documents into professional LaTeX code.
             </p>
           </div>
           
@@ -141,7 +146,7 @@ const LatexConverter: React.FC = () => {
           >
             <span className={mode === 'latex-to-word' ? 'text-orange-400 font-bold' : 'text-slate-400'}>LaTeX</span>
             <ArrowRightLeft className="w-4 h-4 text-slate-400" />
-            <span className={mode === 'word-to-latex' ? 'text-orange-400 font-bold' : 'text-slate-400'}>Word/PDF</span>
+            <span className={mode === 'word-to-latex' ? 'text-orange-400 font-bold' : 'text-slate-400'}>Word (DOCX)</span>
           </button>
        </div>
 
@@ -181,7 +186,7 @@ const LatexConverter: React.FC = () => {
                className="w-full bg-orange-600 hover:bg-orange-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium py-3 rounded-lg transition-all flex justify-center items-center gap-2 shadow-lg shadow-orange-900/20"
             >
               {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <ArrowRightLeft className="w-5 h-5" />}
-              {mode === 'latex-to-word' ? 'Convert to Text' : 'Convert to LaTeX'}
+              {mode === 'latex-to-word' ? 'Convert to Word' : 'Convert to LaTeX'}
             </button>
           </div>
 
@@ -189,7 +194,7 @@ const LatexConverter: React.FC = () => {
           <div className="flex flex-col gap-2">
             <div className="flex justify-between items-center">
                <label className="text-sm font-medium text-slate-300 uppercase tracking-wide">
-                 Output ({mode === 'latex-to-word' ? 'Word-Ready Text' : 'LaTeX Source'})
+                 Output ({mode === 'latex-to-word' ? 'Word (DOCX) Preview' : 'LaTeX Source'})
                </label>
                <div className="flex items-center gap-2">
                  <button 
@@ -228,7 +233,7 @@ const LatexConverter: React.FC = () => {
                  className="w-full bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 rounded-lg transition-all flex justify-center items-center gap-2 border border-slate-600"
                >
                  <Download className="w-5 h-5" />
-                 Download as {mode === 'latex-to-word' ? 'PDF' : '.TEX'}
+                 Download as {mode === 'latex-to-word' ? 'DOCX' : '.TEX'}
                </button>
             )}
           </div>

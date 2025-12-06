@@ -6,6 +6,8 @@ export enum ActiveTool {
   LATEX_CONVERTER = 'LATEX_CONVERTER'
 }
 
+export type HumanizerMode = 'Standard' | 'Formal' | 'Casual' | 'Shorten' | 'Expand' | 'Academic';
+
 export interface AtsAnalysisResult {
   matchScore: number;
   missingKeywords: string[];
