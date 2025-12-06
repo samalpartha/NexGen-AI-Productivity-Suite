@@ -8,7 +8,10 @@ export default defineConfig({
     host: '0.0.0.0',
   },
   plugins: [react()],
-  assetsInclude: ['**/*.html'],
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),
