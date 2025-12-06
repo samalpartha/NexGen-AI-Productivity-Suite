@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { HfInference } from '@huggingface/inference';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     // CORS headers
@@ -26,11 +25,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 message: 'HF_API_KEY environment variable is not set'
             });
         }
-
-        // Initialize HF client with explicit new endpoint
-        const hf = new HfInference(apiKey, {
-            endpoint: "https://router.huggingface.co"
-        });
 
         const { inputContent, mode = 'Standard' } = req.body;
 
@@ -89,22 +83,37 @@ Provide your response in the following JSON format (respond ONLY with valid JSON
   "plagiarismRiskScore": <number 96-99>
 }`;
 
-        // Use Mixtral 8x7B for content humanization (more accessible than Llama)
-        console.log("Attempting HF API call with model: mistralai/Mixtral-8x7B-Instruct-v0.1");
+        // Use Mixtral 8x7B for content humanization via native fetch
+        console.log("Attempting HF API call via FETCH with model: mistralai/Mixtral-8x7B-Instruct-v0.1");
         console.log("API Key present:", !!apiKey);
         console.log("API Key prefix:", apiKey.substring(0, 7));
 
-        const response = await hf.chatCompletion({
-            model: "mistralai/Mixtral-8x7B-Instruct-v0.1",
-            messages: [
-                { role: "user", content: prompt }
-            ],
-            max_tokens: 4000,
-            temperature: 1.0,
+        const response = await fetch("https://router.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: "mistralai/Mixtral-8x7B-Instruct-v0.1",
+                messages: [
+                    { role: "user", content: prompt }
+                ],
+                max_tokens: 4000,
+                temperature: 1.0,
+                stream: false
+            })
         });
 
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HF API Error ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json() as any;
         console.log("HF API response received successfully");
-        const responseText = response.choices[0]?.message?.content || '';
+
+        const responseText = data.choices?.[0]?.message?.content || '';
         console.log("Response text length:", responseText.length);
 
         // Extract JSON from response
@@ -123,12 +132,6 @@ Provide your response in the following JSON format (respond ONLY with valid JSON
         console.error("Error type:", error.constructor.name);
         console.error("Error message:", error.message);
         console.error("Error stack:", error.stack);
-
-        // Try to get more details from HF error
-        if (error.response) {
-            console.error("HF Response status:", error.response.status);
-            console.error("HF Response data:", error.response.data);
-        }
 
         // Log the raw error object
         console.error("Raw error object:", JSON.stringify(error, null, 2));
