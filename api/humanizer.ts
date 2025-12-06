@@ -16,119 +16,131 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    try {
-        const apiKey = process.env.HF_API_KEY;
-        if (!apiKey) {
-            return res.status(500).json({
-                error: 'Configuration error',
-                message: 'HF_API_KEY environment variable is not set'
-            });
+    const apiKey = process.env.HF_API_KEY;
+    if (!apiKey) {
+        return res.status(500).json({ error: 'Configuration error: HF_API_KEY not set' });
+    }
+
+    const { inputContent, mode = 'Standard' } = req.body;
+    if (!inputContent) {
+        return res.status(400).json({ error: 'Missing inputContent' });
+    }
+
+    // Prepare Prompts
+    const systemPrompt = "Rewrite the input text to be unique, human-like, and plagiarism-free. Maintain meaning. Return JSON.";
+    const userPrompt = `Input: ${inputContent}\n\nFormat:\n{\n  "humanizedText": "...",\n  "changesMade": ["..."],\n  "plagiarismRiskScore": 98\n}`;
+
+    // Model: Phi-3 Mini (High Availability)
+    const MODEL = "microsoft/Phi-3-mini-4k-instruct";
+
+    // Fallback Endpoints
+    const endpoints = [
+        {
+            url: `https://router.huggingface.co/models/${MODEL}/v1/chat/completions`,
+            type: 'chat',
+            name: 'Router Chat'
+        },
+        {
+            url: `https://api-inference.huggingface.co/models/${MODEL}/v1/chat/completions`,
+            type: 'chat',
+            name: 'Legacy Chat'
+        },
+        {
+            url: `https://router.huggingface.co/models/${MODEL}`,
+            type: 'task',
+            name: 'Router Task'
+        },
+        {
+            url: `https://api-inference.huggingface.co/models/${MODEL}`,
+            type: 'task',
+            name: 'Legacy Task'
         }
+    ];
 
-        const { inputContent, mode = 'Standard' } = req.body;
+    let lastError = null;
 
-        if (!inputContent) {
-            return res.status(400).json({ error: 'Missing required field: inputContent' });
-        }
-
-        // Simplified prompt for Phi-3 (it follows instructions well but prefers conciseness)
-        let modeInstruction = "Rewrite this text to be unique and human-like.";
-
-        switch (mode) {
-            case 'Academic': modeInstruction += " Style: Academic, objective, third-person."; break;
-            case 'Formal': modeInstruction += " Style: Formal business tone, third-person."; break;
-            case 'Casual': modeInstruction += " Style: Casual, conversational."; break;
-            case 'Shorten': modeInstruction += " Concise summary."; break;
-            case 'Expand': modeInstruction += " Detailed explanation."; break;
-            default: modeInstruction += " Balanced tone."; break;
-        }
-
-        const systemPrompt = `You are a professional writer. Rewrite the input text.
-Rules:
-1. Maintain original meaning.
-2. Changes words and sentence structure to be unique.
-3. ${modeInstruction}
-4. Respond ONLY with the JSON structure requested.`;
-
-        const userPrompt = `Input Text:
-${inputContent}
-
-Output format (JSON only):
-{
-  "humanizedText": "...",
-  "changesMade": ["..."],
-  "plagiarismRiskScore": 98
-}`;
-
-        console.log("Using Chat Endpoint for Microsoft/Phi-3-mini-4k-instruct");
-        console.log("API Key present:", !!apiKey);
-
-        const response = await fetch("https://router.huggingface.co/models/microsoft/Phi-3-mini-4k-instruct/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${apiKey}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                model: "microsoft/Phi-3-mini-4k-instruct",
-                messages: [
-                    { role: "system", content: systemPrompt },
-                    { role: "user", content: userPrompt }
-                ],
-                max_tokens: 1000,
-                temperature: 0.7,
-                stream: false
-            })
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`HF API Error ${response.status}: ${errorText}`);
-            throw new Error(`HF API Error ${response.status}: ${errorText}`);
-        }
-
-        const data = await response.json() as any;
-        console.log("HF API response received successfully");
-
-        const responseText = data.choices?.[0]?.message?.content || '';
-
-        // Extract JSON
-        let jsonText = responseText.trim();
-        // Remove markdown code blocks if present
-        if (jsonText.includes('```json')) {
-            jsonText = jsonText.split('```json')[1].split('```')[0].trim();
-        } else if (jsonText.includes('```')) {
-            jsonText = jsonText.split('```')[1].split('```')[0].trim();
-        }
+    // Retry Loop
+    for (const endpoint of endpoints) {
+        console.log(`Attempting connection to: ${endpoint.name} (${endpoint.url})`);
 
         try {
-            const result = JSON.parse(jsonText);
-            // Ensure humanizedText exists
-            if (!result.humanizedText) throw new Error("Missing humanizedText field");
+            let body;
+            if (endpoint.type === 'chat') {
+                body = JSON.stringify({
+                    model: MODEL,
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: userPrompt }
+                    ],
+                    max_tokens: 1000,
+                    temperature: 0.7,
+                    stream: false
+                });
+            } else {
+                // Task endpoint needs raw string input
+                body = JSON.stringify({
+                    inputs: `<|system|>\n${systemPrompt}<|end|>\n<|user|>\n${userPrompt}<|end|>\n<|assistant|>\n`,
+                    parameters: {
+                        max_new_tokens: 1000,
+                        temperature: 0.7,
+                        return_full_text: false
+                    }
+                });
+            }
 
-            return res.status(200).json({ ...result, originalText: inputContent });
-        } catch (e) {
-            console.error("JSON Parse Error:", e);
-            console.error("Raw Text:", responseText);
-            // Fallback
-            return res.status(200).json({
-                humanizedText: responseText.replace(/```json/g, '').replace(/```/g, '').trim(),
-                changesMade: ["Rewritten content"],
-                plagiarismRiskScore: 99,
-                originalText: inputContent
+            const response = await fetch(endpoint.url, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json"
+                },
+                body: body
             });
+
+            if (!response.ok) {
+                const text = await response.text();
+                // 503 means loading, usually retry works, but we skip to next endpoint for speed
+                console.warn(`${endpoint.name} failed: ${response.status} ${text}`);
+                lastError = `${response.status} ${text}`;
+                continue; // Try next endpoint
+            }
+
+            const data = await response.json() as any;
+            console.log(`${endpoint.name} SUCCESS!`);
+
+            let responseText = '';
+            if (endpoint.type === 'chat') {
+                responseText = data.choices?.[0]?.message?.content || '';
+            } else {
+                // Task endpoint returns array
+                responseText = Array.isArray(data) ? data[0]?.generated_text : data?.generated_text || '';
+            }
+
+            // Parse JSON
+            let jsonText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+            try {
+                const result = JSON.parse(jsonText);
+                return res.status(200).json({ ...result, originalText: inputContent });
+            } catch (e) {
+                // Return text if JSON parse fails
+                return res.status(200).json({
+                    humanizedText: jsonText,
+                    changesMade: ["Rewritten content"],
+                    plagiarismRiskScore: 99,
+                    originalText: inputContent
+                });
+            }
+
+        } catch (error: any) {
+            console.error(`${endpoint.name} Exception:`, error.message);
+            lastError = error.message;
         }
-
-    } catch (error: any) {
-        console.error("=== HUMANIZATION ERROR ===");
-        console.error("Error type:", error.constructor.name);
-        console.error("Error message:", error.message);
-
-        return res.status(500).json({
-            error: 'Humanization failed',
-            message: error.message || 'Unknown error',
-            details: error.toString(),
-            errorType: error.constructor.name
-        });
     }
+
+    // If all fail
+    return res.status(500).json({
+        error: 'Humanization failed on all endpoints',
+        lastError: lastError
+    });
 }
