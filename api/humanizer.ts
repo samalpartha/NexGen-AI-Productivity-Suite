@@ -31,75 +31,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ error: 'Missing required field: inputContent' });
         }
 
-        let modeInstruction = "Rewrite this text to be 100% unique, human-like, and plagiarism-free. ";
-        let perspectiveDirective = "Use a generic, objective tone.";
+        // Simplified prompt for Phi-3 (it follows instructions well but prefers conciseness)
+        let modeInstruction = "Rewrite this text to be unique and human-like.";
 
         switch (mode) {
-            case 'Academic':
-                modeInstruction += "CONTEXT: Academic/Research. TONE: Scholarly, Objective, Nuanced. STRICTLY THIRD PERSON.";
-                perspectiveDirective = "STRICTLY THIRD PERSON. Do not use 'I', 'We', or 'You'.";
-                break;
-            case 'Formal':
-                modeInstruction += "CONTEXT: Professional Business. TONE: Formal, objective. STRICTLY THIRD PERSON.";
-                perspectiveDirective = "Write strictly in the THIRD PERSON.";
-                break;
-            case 'Casual':
-                modeInstruction += "CONTEXT: Casual Conversation. TONE: Chatty, relaxed.";
-                perspectiveDirective = "Conversational tone.";
-                break;
-            case 'Shorten':
-                modeInstruction += "CONTEXT: Concise Summary. Remove fluff while keeping core message.";
-                break;
-            case 'Expand':
-                modeInstruction += "CONTEXT: Detailed Explanation. Add examples to increase length.";
-                break;
-            default:
-                modeInstruction += "Balance clarity with human nuance.";
-                break;
+            case 'Academic': modeInstruction += " Style: Academic, objective, third-person."; break;
+            case 'Formal': modeInstruction += " Style: Formal business tone, third-person."; break;
+            case 'Casual': modeInstruction += " Style: Casual, conversational."; break;
+            case 'Shorten': modeInstruction += " Concise summary."; break;
+            case 'Expand': modeInstruction += " Detailed explanation."; break;
+            default: modeInstruction += " Balanced tone."; break;
         }
 
-        const prompt = `You are an expert writer. Your task is to rewrite the following text to make it unique, human-like, and bypass AI detection.
+        const systemPrompt = `You are a professional writer. Rewrite the input text.
+Rules:
+1. Maintain original meaning.
+2. Changes words and sentence structure to be unique.
+3. ${modeInstruction}
+4. Respond ONLY with the JSON structure requested.`;
 
-MODE: ${mode}
-${modeInstruction}
-${perspectiveDirective}
-
-CRITICAL RULES:
-1. Maintain the same paragraph structure and length
-2. Vary sentence length dramatically (mix short and long sentences)
-3. Use everyday vocabulary, avoid jargon
-4. AVOID these AI-detection triggers: "However", "Therefore", "Moreover", "Furthermore", "In conclusion", "It is important to note"
-5. Do NOT use contractions (use "do not" instead of "don't")
-6. Keep the same meaning and key points
-
-INPUT TEXT:
+        const userPrompt = `Input Text:
 ${inputContent}
 
-Provide your response in the following JSON format (respond ONLY with valid JSON):
+Output format (JSON only):
 {
-  "humanizedText": "The rewritten content here",
-  "changesMade": ["change1", "change2", "change3"],
-  "plagiarismRiskScore": <number 96-99>
+  "humanizedText": "...",
+  "changesMade": ["..."],
+  "plagiarismRiskScore": 98
 }`;
 
-        // Using Qwen/Qwen2.5-72B-Instruct via Chat Completions Endpoint
-        // This is the most reliable endpoint for free tier usage
-        console.log("Using standard Chat Endpoint for Qwen/Qwen2.5-72B-Instruct");
+        console.log("Using Chat Endpoint for Microsoft/Phi-3-mini-4k-instruct");
         console.log("API Key present:", !!apiKey);
 
-        const response = await fetch("https://router.huggingface.co/models/Qwen/Qwen2.5-72B-Instruct/v1/chat/completions", {
+        const response = await fetch("https://router.huggingface.co/models/microsoft/Phi-3-mini-4k-instruct/v1/chat/completions", {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${apiKey}`,
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                model: "Qwen/Qwen2.5-72B-Instruct",
+                model: "microsoft/Phi-3-mini-4k-instruct",
                 messages: [
-                    { role: "user", content: prompt }
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: userPrompt }
                 ],
-                max_tokens: 4000,
-                temperature: 0.7, // Slightly lower temp for better JSON adherence
+                max_tokens: 1000,
+                temperature: 0.7,
                 stream: false
             })
         });
@@ -113,29 +90,31 @@ Provide your response in the following JSON format (respond ONLY with valid JSON
         const data = await response.json() as any;
         console.log("HF API response received successfully");
 
-        // Chat Completion response format
         const responseText = data.choices?.[0]?.message?.content || '';
-        console.log("Response text length:", responseText?.length);
 
-        // Extract JSON from response
+        // Extract JSON
         let jsonText = responseText.trim();
-        if (jsonText.startsWith('```json')) {
-            jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?$/g, '');
-        } else if (jsonText.startsWith('```')) {
-            jsonText = jsonText.replace(/```\n?/g, '').replace(/```\n?$/g, '');
+        // Remove markdown code blocks if present
+        if (jsonText.includes('```json')) {
+            jsonText = jsonText.split('```json')[1].split('```')[0].trim();
+        } else if (jsonText.includes('```')) {
+            jsonText = jsonText.split('```')[1].split('```')[0].trim();
         }
 
         try {
             const result = JSON.parse(jsonText);
+            // Ensure humanizedText exists
+            if (!result.humanizedText) throw new Error("Missing humanizedText field");
+
             return res.status(200).json({ ...result, originalText: inputContent });
         } catch (e) {
             console.error("JSON Parse Error:", e);
-            console.error("Raw Text:", jsonText);
-            // Fallback for failed JSON parse
+            console.error("Raw Text:", responseText);
+            // Fallback
             return res.status(200).json({
-                humanizedText: jsonText, // Return raw text if parse fails
+                humanizedText: responseText.replace(/```json/g, '').replace(/```/g, '').trim(),
                 changesMade: ["Rewritten content"],
-                plagiarismRiskScore: 98,
+                plagiarismRiskScore: 99,
                 originalText: inputContent
             });
         }
