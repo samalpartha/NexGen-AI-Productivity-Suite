@@ -87,6 +87,10 @@ Provide your response in the following JSON format (respond ONLY with valid JSON
 }`;
 
         // Use Mixtral 8x7B for content humanization (more accessible than Llama)
+        console.log("Attempting HF API call with model: mistralai/Mixtral-8x7B-Instruct-v0.1");
+        console.log("API Key present:", !!apiKey);
+        console.log("API Key prefix:", apiKey.substring(0, 7));
+
         const response = await hf.chatCompletion({
             model: "mistralai/Mixtral-8x7B-Instruct-v0.1",
             messages: [
@@ -96,7 +100,9 @@ Provide your response in the following JSON format (respond ONLY with valid JSON
             temperature: 1.0,
         });
 
+        console.log("HF API response received successfully");
         const responseText = response.choices[0]?.message?.content || '';
+        console.log("Response text length:", responseText.length);
 
         // Extract JSON from response
         let jsonText = responseText.trim();
@@ -110,19 +116,25 @@ Provide your response in the following JSON format (respond ONLY with valid JSON
         return res.status(200).json({ ...result, originalText: inputContent });
 
     } catch (error: any) {
-        console.error("Humanization failed:", error);
+        console.error("=== HUMANIZATION ERROR ===");
+        console.error("Error type:", error.constructor.name);
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
 
-        // Log the full error for debugging
-        console.error("Full error details:", {
-            message: error.message,
-            stack: error.stack,
-            response: error.response,
-        });
+        // Try to get more details from HF error
+        if (error.response) {
+            console.error("HF Response status:", error.response.status);
+            console.error("HF Response data:", error.response.data);
+        }
+
+        // Log the raw error object
+        console.error("Raw error object:", JSON.stringify(error, null, 2));
 
         return res.status(500).json({
             error: 'Humanization failed',
             message: error.message || 'Unknown error',
-            details: error.toString()
+            details: error.toString(),
+            errorType: error.constructor.name
         });
     }
 }
