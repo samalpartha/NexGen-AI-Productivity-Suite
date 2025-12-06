@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { analyzeSeo } from '../services/geminiService';
+import { analyzeSeo } from '../services/apiService';
 import { SeoAnalysisResult } from '../types';
 import RadialScore from './RadialScore';
 import { Search, Globe, FileText, Check, X, Loader2, Gauge, BarChart3 } from 'lucide-react';
@@ -111,19 +111,19 @@ const SeoOptimizer: React.FC = () => {
                 <RadialScore score={result.seoScore} label="SEO Score" color="#a855f7" />
               </div>
               <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 flex flex-col justify-center space-y-4">
-                 <div>
-                    <span className="text-slate-400 text-xs font-bold uppercase">Readability</span>
-                    <div className="flex items-end gap-2">
-                       <span className="text-3xl font-bold text-white">{result.readabilityScore}/100</span>
-                    </div>
-                    <div className="w-full bg-slate-700 h-2 rounded-full mt-2">
-                       <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${result.readabilityScore}%`}}></div>
-                    </div>
-                 </div>
-                 <div>
-                    <span className="text-slate-400 text-xs font-bold uppercase">Estimated Load Perf.</span>
-                    <p className="text-white font-medium">{result.loadingSpeedQualitative}</p>
-                 </div>
+                <div>
+                  <span className="text-slate-400 text-xs font-bold uppercase">Readability</span>
+                  <div className="flex items-end gap-2">
+                    <span className="text-3xl font-bold text-white">{result.readabilityScore}/100</span>
+                  </div>
+                  <div className="w-full bg-slate-700 h-2 rounded-full mt-2">
+                    <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${result.readabilityScore}%` }}></div>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-xs font-bold uppercase">Estimated Load Perf.</span>
+                  <p className="text-white font-medium">{result.loadingSpeedQualitative}</p>
+                </div>
               </div>
             </div>
 
@@ -131,14 +131,14 @@ const SeoOptimizer: React.FC = () => {
             <div className="bg-slate-800 p-6 rounded-xl border border-slate-700">
               <h3 className="text-lg font-semibold text-white mb-4">Content Insights</h3>
               <div className="grid grid-cols-1 gap-4">
-                 <div className="bg-slate-900 p-4 rounded-lg">
-                    <span className="text-purple-400 text-xs font-bold uppercase block mb-1">Keyword Density Analysis</span>
-                    <p className="text-slate-300 text-sm">{result.keywordDensity}</p>
-                 </div>
-                 <div className="bg-slate-900 p-4 rounded-lg">
-                    <span className="text-blue-400 text-xs font-bold uppercase block mb-1">Meta Description Check</span>
-                    <p className="text-slate-300 text-sm">{result.metaDescription}</p>
-                 </div>
+                <div className="bg-slate-900 p-4 rounded-lg">
+                  <span className="text-purple-400 text-xs font-bold uppercase block mb-1">Keyword Density Analysis</span>
+                  <p className="text-slate-300 text-sm">{result.keywordDensity}</p>
+                </div>
+                <div className="bg-slate-900 p-4 rounded-lg">
+                  <span className="text-blue-400 text-xs font-bold uppercase block mb-1">Meta Description Check</span>
+                  <p className="text-slate-300 text-sm">{result.metaDescription}</p>
+                </div>
               </div>
             </div>
 
@@ -149,9 +149,9 @@ const SeoOptimizer: React.FC = () => {
                 {result.improvementChecklist.map((item, i) => (
                   <li key={i} className="flex items-start gap-3 p-3 bg-slate-900/50 rounded-lg">
                     {item.toLowerCase().includes('good') || item.toLowerCase().includes('great') ? (
-                       <Check className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                      <Check className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
                     ) : (
-                       <X className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                      <X className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
                     )}
                     <span className="text-slate-300 text-sm">{item}</span>
                   </li>
@@ -161,8 +161,8 @@ const SeoOptimizer: React.FC = () => {
           </div>
         ) : (
           <div className="h-full bg-slate-800 rounded-xl border border-slate-700 flex flex-col items-center justify-center text-slate-500">
-             <BarChart3 className="w-16 h-16 opacity-20 mb-4" />
-             <p>Enter URL or Content to generate a detailed SEO report.</p>
+            <BarChart3 className="w-16 h-16 opacity-20 mb-4" />
+            <p>Enter URL or Content to generate a detailed SEO report.</p>
           </div>
         )}
       </div>

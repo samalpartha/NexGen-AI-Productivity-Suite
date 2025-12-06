@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { humanizeContent } from '../services/geminiService';
+import { humanizeContent } from '../services/apiService';
 import { HumanizerResult, HumanizerMode } from '../types';
 import { Wand2, Loader2, Copy, ShieldCheck, ArrowRight, Settings2 } from 'lucide-react';
 
@@ -44,11 +44,11 @@ const ContentHumanizer: React.FC = () => {
             Rewrite content to bypass AI detection and remove plagiarism flags.
           </p>
         </div>
-        
+
         <div className="flex items-center gap-2 bg-slate-900/50 p-2 rounded-lg border border-slate-700/50">
           <Settings2 className="w-4 h-4 text-slate-400 ml-1" />
-          <select 
-            value={mode} 
+          <select
+            value={mode}
             onChange={(e) => setMode(e.target.value as HumanizerMode)}
             className="bg-transparent text-sm text-slate-200 focus:outline-none cursor-pointer hover:text-white"
           >
@@ -85,37 +85,37 @@ const ContentHumanizer: React.FC = () => {
           <div className="flex-1 w-full bg-slate-800 border border-slate-700 rounded-lg p-4 relative overflow-hidden group flex flex-col">
             {result ? (
               <div className="h-full flex flex-col">
-                 <div className="flex items-center justify-between mb-4 border-b border-slate-700 pb-2 shrink-0">
-                    <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
-                      Plagiarism Risk Reduced by {result.plagiarismRiskScore}%
-                    </span>
-                    <button 
-                      onClick={() => navigator.clipboard.writeText(result.humanizedText)}
-                      className="text-slate-400 hover:text-white transition-colors"
-                      title="Copy"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </button>
-                 </div>
-                 
-                 {/* Main content with whitespace-pre-wrap to preserve formatting */}
-                 <div className="flex-1 overflow-y-auto pr-2">
-                   <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap font-mono">
-                     {result.humanizedText}
-                   </p>
-                   
-                   <div className="mt-6 pt-4 border-t border-slate-700/50">
-                      <h4 className="text-xs font-bold text-slate-500 mb-2">Changes Applied</h4>
-                      <ul className="space-y-1">
-                        {result.changesMade.map((change, i) => (
-                          <li key={i} className="text-xs text-slate-400 flex items-start gap-2">
-                            <ArrowRight className="w-3 h-3 mt-0.5 text-emerald-500 shrink-0" />
-                            {change}
-                          </li>
-                        ))}
-                      </ul>
-                   </div>
-                 </div>
+                <div className="flex items-center justify-between mb-4 border-b border-slate-700 pb-2 shrink-0">
+                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
+                    Plagiarism Risk Reduced by {result.plagiarismRiskScore}%
+                  </span>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(result.humanizedText)}
+                    className="text-slate-400 hover:text-white transition-colors"
+                    title="Copy"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Main content with whitespace-pre-wrap to preserve formatting */}
+                <div className="flex-1 overflow-y-auto pr-2">
+                  <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap font-mono">
+                    {result.humanizedText}
+                  </p>
+
+                  <div className="mt-6 pt-4 border-t border-slate-700/50">
+                    <h4 className="text-xs font-bold text-slate-500 mb-2">Changes Applied</h4>
+                    <ul className="space-y-1">
+                      {result.changesMade.map((change, i) => (
+                        <li key={i} className="text-xs text-slate-400 flex items-start gap-2">
+                          <ArrowRight className="w-3 h-3 mt-0.5 text-emerald-500 shrink-0" />
+                          {change}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-slate-600">

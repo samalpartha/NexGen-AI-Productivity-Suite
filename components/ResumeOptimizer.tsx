@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { analyzeResume, generateCoverLetter, ResumeInput } from '../services/geminiService';
+import { analyzeResume, generateCoverLetter, ResumeInput } from '../services/apiService';
 import { AtsAnalysisResult } from '../types';
 import RadialScore from './RadialScore';
 import { FileText, CheckCircle, AlertCircle, Briefcase, FileSignature, Loader2, Upload, X, File as FileIcon } from 'lucide-react';
@@ -74,7 +74,7 @@ const ResumeOptimizer: React.FC = () => {
         setResumeText(''); // Clear text input as we have a binary file
       };
       reader.readAsDataURL(file);
-    } 
+    }
     else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
       // For DOCX, we extract text using mammoth
       try {
@@ -131,7 +131,7 @@ const ResumeOptimizer: React.FC = () => {
               <h2 className="text-xl font-semibold text-white">Your Resume</h2>
             </div>
             {!resumeFile && (
-              <button 
+              <button
                 onClick={() => fileInputRef.current?.click()}
                 className="text-xs bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 border border-indigo-600/20"
               >
@@ -139,12 +139,12 @@ const ResumeOptimizer: React.FC = () => {
                 Upload File
               </button>
             )}
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
-              accept=".pdf,.docx" 
-              onChange={handleFileChange} 
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept=".pdf,.docx"
+              onChange={handleFileChange}
             />
           </div>
 
@@ -157,8 +157,8 @@ const ResumeOptimizer: React.FC = () => {
               <p className="text-slate-500 text-xs mt-1">
                 {resumeFile.mimeType.includes('pdf') ? 'PDF Ready for scanning' : 'DOCX Converted to text'}
               </p>
-              
-              <button 
+
+              <button
                 onClick={clearFile}
                 className="mt-4 text-slate-400 hover:text-red-400 flex items-center gap-1 text-xs transition-colors px-3 py-2 rounded-md hover:bg-slate-800"
               >
@@ -186,9 +186,9 @@ const ResumeOptimizer: React.FC = () => {
             Scan Resume
           </button>
           <button
-             onClick={handleGenerateCL}
-             disabled={clLoading || !hasInput || !jobDesc}
-             className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium py-3 rounded-lg transition-all flex justify-center items-center gap-2"
+            onClick={handleGenerateCL}
+            disabled={clLoading || !hasInput || !jobDesc}
+            className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium py-3 rounded-lg transition-all flex justify-center items-center gap-2"
           >
             {clLoading ? <Loader2 className="animate-spin w-5 h-5" /> : <FileSignature className="w-5 h-5" />}
             Write Cover Letter
@@ -201,7 +201,7 @@ const ResumeOptimizer: React.FC = () => {
         {result && (
           <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 animate-fade-in">
             <h3 className="text-lg font-semibold text-white mb-4 border-b border-slate-700 pb-2">Analysis Results</h3>
-            
+
             <RadialScore score={result.matchScore} label="ATS Match" />
 
             <div className="mt-6 space-y-4">
@@ -227,28 +227,28 @@ const ResumeOptimizer: React.FC = () => {
               )}
 
               <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-lg">
-                 <h4 className="text-blue-400 text-sm font-bold mb-2">Suggestions</h4>
-                 <ul className="list-disc list-inside space-y-1 text-sm text-slate-300">
-                    {result.suggestions.map((s, i) => <li key={i}>{s}</li>)}
-                 </ul>
+                <h4 className="text-blue-400 text-sm font-bold mb-2">Suggestions</h4>
+                <ul className="list-disc list-inside space-y-1 text-sm text-slate-300">
+                  {result.suggestions.map((s, i) => <li key={i}>{s}</li>)}
+                </ul>
               </div>
             </div>
           </div>
         )}
 
         {coverLetter && (
-           <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 animate-fade-in">
-              <h3 className="text-lg font-semibold text-white mb-4 border-b border-slate-700 pb-2">Generated Cover Letter</h3>
-              <div className="bg-white text-slate-900 p-6 rounded-lg shadow-inner whitespace-pre-wrap font-serif text-sm leading-relaxed">
-                {coverLetter}
-              </div>
-              <button 
-                onClick={() => navigator.clipboard.writeText(coverLetter)}
-                className="mt-4 w-full py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm rounded transition-colors"
-              >
-                Copy to Clipboard
-              </button>
-           </div>
+          <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 animate-fade-in">
+            <h3 className="text-lg font-semibold text-white mb-4 border-b border-slate-700 pb-2">Generated Cover Letter</h3>
+            <div className="bg-white text-slate-900 p-6 rounded-lg shadow-inner whitespace-pre-wrap font-serif text-sm leading-relaxed">
+              {coverLetter}
+            </div>
+            <button
+              onClick={() => navigator.clipboard.writeText(coverLetter)}
+              className="mt-4 w-full py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm rounded transition-colors"
+            >
+              Copy to Clipboard
+            </button>
+          </div>
         )}
 
         {!result && !coverLetter && (

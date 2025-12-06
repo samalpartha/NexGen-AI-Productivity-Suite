@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { removeImageBackground } from '../services/geminiService';
+import { removeImageBackground } from '../services/apiService';
 import { Image as ImageIcon, Upload, Loader2, Download, Layers, X, ArrowRight } from 'lucide-react';
 
 const BackgroundRemover: React.FC = () => {
@@ -76,9 +76,9 @@ const BackgroundRemover: React.FC = () => {
         {/* Input Side */}
         <div className="flex flex-col gap-4">
           <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Original Image</h3>
-          
+
           {!selectedFile ? (
-            <div 
+            <div
               onClick={() => fileInputRef.current?.click()}
               className="flex-1 bg-slate-900 border-2 border-dashed border-slate-700 rounded-xl flex flex-col items-center justify-center p-8 cursor-pointer hover:border-pink-500/50 hover:bg-slate-800/50 transition-all group"
             >
@@ -87,12 +87,12 @@ const BackgroundRemover: React.FC = () => {
               </div>
               <p className="text-slate-300 font-medium">Click to upload image</p>
               <p className="text-slate-500 text-xs mt-2">JPG, PNG, WEBP supported</p>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                accept="image/*" 
-                onChange={handleFileChange} 
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleFileChange}
               />
             </div>
           ) : (
@@ -103,13 +103,13 @@ const BackgroundRemover: React.FC = () => {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              
+
               <div className="relative flex-1 bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')] rounded-lg overflow-hidden flex items-center justify-center bg-slate-800">
-                 <img 
-                   src={`data:${selectedFile.mimeType};base64,${selectedFile.data}`} 
-                   alt="Original" 
-                   className="max-w-full max-h-full object-contain"
-                 />
+                <img
+                  src={`data:${selectedFile.mimeType};base64,${selectedFile.data}`}
+                  alt="Original"
+                  className="max-w-full max-h-full object-contain"
+                />
               </div>
 
               <button
@@ -127,14 +127,14 @@ const BackgroundRemover: React.FC = () => {
         {/* Output Side */}
         <div className="flex flex-col gap-4">
           <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Processed Result</h3>
-          
+
           <div className="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-4 flex flex-col">
             {processedImage ? (
               <>
                 <div className="flex-1 relative bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-slate-800 rounded-lg overflow-hidden flex items-center justify-center border border-slate-700">
-                  <img 
-                    src={`data:image/png;base64,${processedImage}`} 
-                    alt="Processed" 
+                  <img
+                    src={`data:image/png;base64,${processedImage}`}
+                    alt="Processed"
                     className="max-w-full max-h-full object-contain"
                   />
                 </div>
@@ -149,15 +149,15 @@ const BackgroundRemover: React.FC = () => {
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-slate-600 opacity-50">
                 {loading ? (
-                   <div className="text-center">
-                     <Loader2 className="w-12 h-12 mb-4 animate-spin text-pink-500" />
-                     <p>Processing image...</p>
-                   </div>
+                  <div className="text-center">
+                    <Loader2 className="w-12 h-12 mb-4 animate-spin text-pink-500" />
+                    <p>Processing image...</p>
+                  </div>
                 ) : (
-                   <>
-                     <ImageIcon className="w-16 h-16 mb-4" />
-                     <p>Result will appear here</p>
-                   </>
+                  <>
+                    <ImageIcon className="w-16 h-16 mb-4" />
+                    <p>Result will appear here</p>
+                  </>
                 )}
               </div>
             )}
