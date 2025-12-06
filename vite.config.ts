@@ -18,8 +18,8 @@ export default defineConfig(({ mode }) => {
       emptyOutDir: true,
     },
     define: {
-      // Securely inject the HF API Key from the loaded environment variables
-      '__HF_API_KEY__': JSON.stringify(env.HF_API_KEY),
+      // Securely inject the HF API Key (check both loadEnv result and process.env)
+      '__HF_API_KEY__': JSON.stringify(env.HF_API_KEY || process.env.HF_API_KEY || ''),
     },
     resolve: {
       alias: {
