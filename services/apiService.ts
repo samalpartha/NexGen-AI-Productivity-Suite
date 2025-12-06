@@ -63,7 +63,7 @@ export const analyzeResume = async (resumeInput: ResumeInput, jobDescription: st
  */
 export const humanizeContent = async (inputContent: string, mode: HumanizerMode = 'Standard'): Promise<HumanizerResult> => {
     try {
-        const response = await fetch(`${API_BASE_URL}/humanize-content`, {
+        const response = await fetch(`${API_BASE_URL}/humanizer`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
