@@ -17,7 +17,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
-        // Initialize HF client inside handler to ensure env var is loaded
         const apiKey = process.env.HF_API_KEY;
         if (!apiKey) {
             return res.status(500).json({
@@ -83,25 +82,25 @@ Provide your response in the following JSON format (respond ONLY with valid JSON
   "plagiarismRiskScore": <number 96-99>
 }`;
 
-        // Use Mixtral 8x7B for content humanization via native fetch
-        console.log("Attempting HF API call via FETCH with model: mistralai/Mixtral-8x7B-Instruct-v0.1");
-        console.log("API Key present:", !!apiKey);
-        console.log("API Key prefix:", apiKey.substring(0, 7));
+        // Wrapped prompt for Mixtral Instruct
+        const formattedPrompt = `[INST] ${prompt} [/INST]`;
 
-        const response = await fetch("https://router.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1/v1/chat/completions", {
+        console.log("Using standard Task Endpoint logic for Mixtral");
+        console.log("API Key present:", !!apiKey);
+
+        const response = await fetch("https://router.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1", {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${apiKey}`,
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                model: "mistralai/Mixtral-8x7B-Instruct-v0.1",
-                messages: [
-                    { role: "user", content: prompt }
-                ],
-                max_tokens: 4000,
-                temperature: 1.0,
-                stream: false
+                inputs: formattedPrompt,
+                parameters: {
+                    max_new_tokens: 4000,
+                    temperature: 1.0,
+                    return_full_text: false
+                }
             })
         });
 
@@ -113,8 +112,9 @@ Provide your response in the following JSON format (respond ONLY with valid JSON
         const data = await response.json() as any;
         console.log("HF API response received successfully");
 
-        const responseText = data.choices?.[0]?.message?.content || '';
-        console.log("Response text length:", responseText.length);
+        // Response from task endpoint is usually an array: [{ generated_text: "..." }]
+        const responseText = Array.isArray(data) ? data[0]?.generated_text : data?.generated_text || '';
+        console.log("Response text length:", responseText?.length);
 
         // Extract JSON from response
         let jsonText = responseText.trim();
@@ -131,7 +131,6 @@ Provide your response in the following JSON format (respond ONLY with valid JSON
         console.error("=== HUMANIZATION ERROR ===");
         console.error("Error type:", error.constructor.name);
         console.error("Error message:", error.message);
-        console.error("Error stack:", error.stack);
 
         // Log the raw error object
         console.error("Raw error object:", JSON.stringify(error, null, 2));
