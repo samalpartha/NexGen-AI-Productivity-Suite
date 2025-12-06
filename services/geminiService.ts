@@ -119,11 +119,11 @@ export const humanizeContent = async (inputContent: string, mode: HumanizerMode 
 
   switch (mode) {
     case 'Academic':
-      modeInstruction += "CONTEXT: Academic/Research. TONE: Scholarly, Objective, Nuanced, yet HUMAN. Avoid 'AI-Academic' words (e.g., 'Delve', 'Tapestry', 'Realm', 'Underscore'). Use precise verbs but varying sentence structures.";
-      perspectiveDirective = "• Perspective: STRICTLY THIRD PERSON. Do not use 'I' or 'We'. Focus on the data/subject.";
+      modeInstruction += "CONTEXT: Academic/Research. TONE: Scholarly, Objective, Nuanced, yet HUMAN. Avoid 'AI-Academic' words (e.g., 'Delve', 'Tapestry', 'Realm', 'Underscore'). Use precise verbs but varying sentence structures. STRICTLY THIRD PERSON.";
+      perspectiveDirective = "• Perspective: STRICTLY THIRD PERSON. Do not use 'I', 'We', or 'You'. Focus on the data/subject/evidence.";
       break;
     case 'Formal':
-      modeInstruction += "CONTEXT: Professional Business. TONE: Formal, objective. Avoid slang, but also avoid robotic corporate jargon.";
+      modeInstruction += "CONTEXT: Professional Business. TONE: Formal, objective. Avoid slang, but also avoid robotic corporate jargon. STRICTLY THIRD PERSON.";
       perspectiveDirective = "• Perspective: Write strictly in the THIRD PERSON. Do not use \"I\", \"We\", or \"You\". Maintain an objective, professional tone.";
       break;
     case 'Casual':
@@ -146,14 +146,20 @@ export const humanizeContent = async (inputContent: string, mode: HumanizerMode 
     You are the world's leading Subject Matter Expert (SME) on the topic of the input text.
     Your goal is to rewrite the input content to demonstrate deep authority and insight while strictly adhering to human writing patterns to pass AI detection.
     
-    OBJECTIVE: REDUCE AI DETECTION SCORE TO <5% while MAINTAINING ORIGINAL CONTENT LENGTH AND STRUCTURE.
-    OUTPUT SCORING: The 'plagiarismRiskScore' in your response must represent the % of risk REMOVED. Target 96-99%.
+    OBJECTIVE: REDUCE AI DETECTION SCORE TO <10% while MAINTAINING ORIGINAL CONTENT LENGTH AND STRUCTURE.
+    OUTPUT SCORING: The 'plagiarismRiskScore' in your response must represent the % of risk REMOVED. Target 98-99%.
     
     INTERNAL CHAIN OF THOUGHT (Execute this in your thinking process before generating JSON):
     1. ANALYZE: Identify the AI patterns in the input (e.g., "In conclusion", "It is important to note", uniform sentence length).
     2. PLAN: Determine how to break these patterns using the specific mode (${mode}).
     3. DETECT HEADERS: Scan for headers, numbering (e.g., "2.1 Title"), or bullet points. Mark them to be preserved EXACTLY.
-    4. DRAFT & REFINE: Rewrite body text sentence by sentence. If a sentence sounds "smooth" or "predictable", break it. Make it jagged. Make it human.
+    4. DRAFT & REFINE: Rewrite body text sentence by sentence.
+       - "Does this sentence sound predictable?" -> If yes, change the verb.
+       - "Are all sentences the same length?" -> If yes, combine two short ones, or chop a long one.
+       - "Am I using a bridge word like 'Moreover'?" -> If yes, DELETE IT.
+       - "Is this sentence exaggerated?" -> If yes, tone it down to facts.
+       - "Is the grammar perfect?" -> Check subject-verb agreement and tense.
+       - "Am I using a contraction?" -> EXPAND IT (e.g. "won't" -> "would not").
     5. CHECK FORMAT: Ensure paragraph count matches input exactly. Ensure headers are untouched.
     
     CRITICAL FORMATTING & LENGTH RULES:
@@ -172,22 +178,29 @@ export const humanizeContent = async (inputContent: string, mode: HumanizerMode 
     • Expert Persona: Write with authoritative depth. Show you truly understand the nuances of the subject.
     • Voice Balance: Use your best judgment regarding Active vs Passive voice. Use active voice for clarity/impact, but use passive voice or generic subjects if it improves flow or avoids forced "You" statements.
     • Everyday Vocabulary: Substitute unnecessary technical jargon or corporate fluff with everyday vocabulary.
-    • High Perplexity and Burstiness: Introduce varied sentence structures and lengths. Mix short, punchy sentences with longer, flowing ones.
+    • EXTREME BURSTINESS: Variate sentence length wildly. Follow a 30-word complex sentence with a 4-word punchy fragment. Avoid rhythm monotony.
+    • UNPREDICTABLE VOCABULARY: Do not use the most statistically probable word. Choose the 2nd or 3rd most common synonym to increase Perplexity, BUT ensure the synonym is contextually accurate and not obscure.
     • Emotional Nuance: Incorporate small emotional expressions or reflections where it fits naturally (Unless in Academic/Formal mode where you should rely on 'Intellectual Nuance').
+    • GRAMMAR PRECISION: Ensure flawless grammar. Check subject-verb agreement, tense consistency, and punctuation.
+    • GROUNDED REALISM: Do not exaggerate. Avoid words like "unparalleled", "limitless", "incredible" unless factually true. Keep the tone realistic and professional.
+    • PRECISE SYNONYMS: Use synonyms that fit the specific context perfectly to avoid repetition. Do not use a synonym if it changes the original meaning.
+    • EXPAND CONTRACTIONS: Always expand contractions for clarity and formality. Use "would not" instead of "won't", "cannot" instead of "can't", "do not" instead of "don't", "it is" instead of "it's".
     ${perspectiveDirective}
     
     AI PATTERN BREAKING (Crucial for <10% Score):
-    • No Perfect Transitions: Do not use standard AI transition words like "However", "Therefore", "Moreover".
-    • Sentence Fragments: Use occasional standalone fragments for emphasis if it feels natural (e.g., "Not always.", "Simple as that.").
-    • Imperfect Flow: AI writes with perfect, predictable rhythm. Humans don't. Allow for slight digressions or conversational filler.
-    • Asymmetry: Avoid perfectly balanced sentence structures.
+    • NO BRIDGE WORDS: Strictly AVOID transition words like "However", "Therefore", "Moreover", "Furthermore", "In addition". Start sentences directly with the subject or action.
+    • IMPERFECT FLOW: AI writes with perfect, predictable rhythm. Humans don't. Allow for slight digressions, conversational filler, or abrupt changes in pace.
+    • ASYMMETRY: Avoid perfectly balanced sentence structures.
+    • LESS ENTHUSIASM: AI is often overly cheerful or optimistic. Humans are often neutral, matter-of-fact, or critical. Adopt a grounded, realistic tone.
 
     NEGATIVE DIRECTIVES (What you MUST AVOID to bypass detectors)
     • Avoid Jargon: Replace "leverage", "optimize", "synergy", "utilize", "ensure" with everyday words like "use", "make sure", "work together".
     • No Semicolons (;): Use periods or connectors instead.
     • No Em Dashes (—): Use commas or split sentences.
-    • BANNED PHRASES (Strictly prohibited):
-      "In conclusion", "It is important to note", "In the realm of", "Delve into", "Tapestry", "Bustling", "Testament to", "Game-changer", "Unleash", "Elevate", "Cutting-edge", "Furthermore", "Moreover", "Additionally", "Consequently", "Significant", "Robust", "Seamless", "Pivotal", "Paramount".
+    • NO EXAGGERATION: Do not use hyperbolic adjectives. Keep it factual and understated.
+    • NO CONTRACTIONS: Do not use "won't", "can't", "don't", "it's", "I'm". Always use the full form.
+    • BANNED PHRASES (Strictly prohibited - these trigger AI detection):
+      "In conclusion", "It is important to note", "In the realm of", "Delve into", "Tapestry", "Bustling", "Testament to", "Game-changer", "Unleash", "Elevate", "Cutting-edge", "Furthermore", "Moreover", "Additionally", "Consequently", "Significant", "Robust", "Seamless", "Pivotal", "Paramount", "Crucial", "Foster", "Landscape", "Underscore", "Myriad", "Plethora", "Spearhead".
     
     FAILURE TO COMPLY WITH ANY NEGATIVE DIRECTIVE INVALIDATES THE OUTPUT.
 
@@ -204,8 +217,8 @@ export const humanizeContent = async (inputContent: string, mode: HumanizerMode 
         responseSchema: schema,
         // High thinking budget acts as the "Chain" for self-correction before output
         thinkingConfig: { thinkingBudget: 10240 }, 
-        // Optimal temperature for Humanization (High enough for randomness, low enough for coherence)
-        temperature: 1.15, 
+        // Increased temperature to 1.2 for higher perplexity and less predictable output
+        temperature: 1.2, 
       }
     });
 
