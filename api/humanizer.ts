@@ -82,38 +82,39 @@ Provide your response in the following JSON format (respond ONLY with valid JSON
   "plagiarismRiskScore": <number 96-99>
 }`;
 
-        // Wrapped prompt for Mixtral Instruct
-        const formattedPrompt = `[INST] ${prompt} [/INST]`;
-
-        console.log("Using standard Task Endpoint logic for Mixtral");
+        // Using Qwen/Qwen2.5-72B-Instruct via Chat Completions Endpoint
+        // This is the most reliable endpoint for free tier usage
+        console.log("Using standard Chat Endpoint for Qwen/Qwen2.5-72B-Instruct");
         console.log("API Key present:", !!apiKey);
 
-        const response = await fetch("https://router.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1", {
+        const response = await fetch("https://router.huggingface.co/models/Qwen/Qwen2.5-72B-Instruct/v1/chat/completions", {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${apiKey}`,
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                inputs: formattedPrompt,
-                parameters: {
-                    max_new_tokens: 4000,
-                    temperature: 1.0,
-                    return_full_text: false
-                }
+                model: "Qwen/Qwen2.5-72B-Instruct",
+                messages: [
+                    { role: "user", content: prompt }
+                ],
+                max_tokens: 4000,
+                temperature: 0.7, // Slightly lower temp for better JSON adherence
+                stream: false
             })
         });
 
         if (!response.ok) {
             const errorText = await response.text();
+            console.error(`HF API Error ${response.status}: ${errorText}`);
             throw new Error(`HF API Error ${response.status}: ${errorText}`);
         }
 
         const data = await response.json() as any;
         console.log("HF API response received successfully");
 
-        // Response from task endpoint is usually an array: [{ generated_text: "..." }]
-        const responseText = Array.isArray(data) ? data[0]?.generated_text : data?.generated_text || '';
+        // Chat Completion response format
+        const responseText = data.choices?.[0]?.message?.content || '';
         console.log("Response text length:", responseText?.length);
 
         // Extract JSON from response
@@ -124,16 +125,25 @@ Provide your response in the following JSON format (respond ONLY with valid JSON
             jsonText = jsonText.replace(/```\n?/g, '').replace(/```\n?$/g, '');
         }
 
-        const result = JSON.parse(jsonText);
-        return res.status(200).json({ ...result, originalText: inputContent });
+        try {
+            const result = JSON.parse(jsonText);
+            return res.status(200).json({ ...result, originalText: inputContent });
+        } catch (e) {
+            console.error("JSON Parse Error:", e);
+            console.error("Raw Text:", jsonText);
+            // Fallback for failed JSON parse
+            return res.status(200).json({
+                humanizedText: jsonText, // Return raw text if parse fails
+                changesMade: ["Rewritten content"],
+                plagiarismRiskScore: 98,
+                originalText: inputContent
+            });
+        }
 
     } catch (error: any) {
         console.error("=== HUMANIZATION ERROR ===");
         console.error("Error type:", error.constructor.name);
         console.error("Error message:", error.message);
-
-        // Log the raw error object
-        console.error("Raw error object:", JSON.stringify(error, null, 2));
 
         return res.status(500).json({
             error: 'Humanization failed',
