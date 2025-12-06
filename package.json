@@ -9,14 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react-dom": "^19.2.1",
-    "react": "^19.2.1",
-    "recharts": "^3.5.1",
-    "lucide-react": "^0.555.0",
+    "@google/generative-ai": "^0.24.1",
     "@huggingface/inference": "latest",
-    "mammoth": "1.8.0",
+    "docx": "8.5.0",
     "jspdf": "2.5.1",
-    "docx": "8.5.0"
+    "lucide-react": "^0.555.0",
+    "mammoth": "1.8.0",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "recharts": "^3.5.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
