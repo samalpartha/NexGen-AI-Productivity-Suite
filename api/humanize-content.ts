@@ -1,8 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { HfInference } from '@huggingface/inference';
 
-const hf = new HfInference(process.env.HF_API_KEY);
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     // CORS headers
     res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -20,6 +18,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
+        // Initialize HF client inside handler to ensure env var is loaded
+        const apiKey = process.env.HF_API_KEY;
+        if (!apiKey) {
+            return res.status(500).json({
+                error: 'Configuration error',
+                message: 'HF_API_KEY environment variable is not set'
+            });
+        }
+
+        const hf = new HfInference(apiKey);
+
         const { inputContent, mode = 'Standard' } = req.body;
 
         if (!inputContent) {
