@@ -27,7 +27,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             });
         }
 
-        const hf = new HfInference(apiKey);
+        // Initialize HF client with explicit new endpoint
+        const hf = new HfInference(apiKey, {
+            endpoint: "https://router.huggingface.co"
+        });
 
         const { inputContent, mode = 'Standard' } = req.body;
 

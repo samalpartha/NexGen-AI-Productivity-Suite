@@ -1,7 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { HfInference } from '@huggingface/inference';
-
-const hf = new HfInference(process.env.HF_API_KEY);
+// Initialize HF client with explicit new endpoint
+const hf = new HfInference(process.env.HF_API_KEY, {
+    endpoint: "https://router.huggingface.co"
+});
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     // CORS headers
