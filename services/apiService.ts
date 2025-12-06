@@ -83,21 +83,23 @@ export const humanizeContent = async (inputContent: string, mode: HumanizerMode 
         const systemPrompt = "You are a rewriter. Rewrite input to be unique. Return JSON.";
         const userPrompt = `Input: ${inputContent}\n\nFormat JSON:\n{\n"humanizedText": "...",\n"changesMade": ["..."],\n"plagiarismRiskScore": 98\n}`;
 
-        console.log("Calling HF Client-Side (Zephyr 7B)...");
+        console.log("Calling HF Client-Side (Zephyr 7B on Router)...");
 
-        const response = await fetch("https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta", {
+        const response = await fetch("https://router.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta/v1/chat/completions", {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${apiKey}`,
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                inputs: `<|system|>\n${systemPrompt}</s>\n<|user|>\n${userPrompt}</s>\n<|assistant|>\n`,
-                parameters: {
-                    max_new_tokens: 1000,
-                    temperature: 0.7,
-                    return_full_text: false
-                }
+                model: "HuggingFaceH4/zephyr-7b-beta",
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: userPrompt }
+                ],
+                max_tokens: 1000,
+                temperature: 0.7,
+                stream: false
             })
         });
 
@@ -107,7 +109,7 @@ export const humanizeContent = async (inputContent: string, mode: HumanizerMode 
         }
 
         const data = await response.json();
-        const text = Array.isArray(data) ? data[0]?.generated_text : data?.generated_text;
+        const text = data.choices?.[0]?.message?.content || '';
 
         let jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
         try {
