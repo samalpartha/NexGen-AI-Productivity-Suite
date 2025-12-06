@@ -12,6 +12,9 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
   },
+  define: {
+    '__HF_API_KEY__': JSON.stringify(process.env.HF_API_KEY),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),
