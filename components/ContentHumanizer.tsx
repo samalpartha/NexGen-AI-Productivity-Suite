@@ -89,66 +89,84 @@ const ContentHumanizer: React.FC = () => {
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-slate-300">Original AI Content</label>
           <textarea
-            className="flex-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-4 text-sm text-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none resize-none placeholder-slate-600 leading-relaxed font-mono"
-            placeholder="Paste text here to humanize..."
-            value={text}
+            value={content}
             onChange={handleTextChange}
+            placeholder="Paste your content here to humanize..."
+            className="w-full h-64 p-4 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none font-medium text-gray-600"
           />
-          <button
-            onClick={handleHumanize}
-            disabled={loading || !text}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium py-3 rounded-lg transition-all flex justify-center items-center gap-2 shadow-lg shadow-emerald-900/20"
-          >
-            {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <Wand2 className="w-5 h-5" />}
-            Humanize Text ({mode})
-          </button>
-        </div>
 
-        {/* Output */}
-        <div className="flex flex-col gap-2 relative">
-          <label className="text-sm font-medium text-slate-300">Humanized Output (Formatting Preserved)</label>
-          <div className="flex-1 w-full bg-slate-800 border border-slate-700 rounded-lg p-4 relative overflow-hidden group flex flex-col">
-            {result ? (
-              <div className="h-full flex flex-col">
-                <div className="flex items-center justify-between mb-4 border-b border-slate-700 pb-2 shrink-0">
-                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
-                    Plagiarism Risk Reduced by {result.plagiarismRiskScore}%
-                  </span>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(result.humanizedText)}
-                    className="text-slate-400 hover:text-white transition-colors"
-                    title="Copy"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
+          <div className="flex justify-end">
+            <button
+              onClick={handleHumanize}
+              disabled={!content || isLoading}
+              className={`
+                            px-8 py-3 rounded-lg font-semibold text-white shadow-lg transition-all duration-200 flex items-center gap-2
+                            ${!content || isLoading
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transform hover:-translate-y-0.5'
+                }
+                        `}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Humanizing...
+                </>
+              ) : (
+                <>
+                  <Wand2 className="w-5 h-5" />
+                  Humanize Content
+                </>
+              )}
+            </button>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 text-red-600 p-4 rounded-lg flex items-center gap-2">
+              <span>⚠️ {error}</span>
+            </div>
+          )}
+
+          {showHumanized && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                  <div className="flex items-center gap-2 text-green-800 font-semibold mb-1">
+                    <ShieldCheck className="w-5 h-5" />
+                    AI Score
+                  </div>
+                  <div className="text-2xl font-bold text-green-600">{100 - (score || 0)}% Human</div>
                 </div>
-
-                {/* Main content with whitespace-pre-wrap to preserve formatting */}
-                <div className="flex-1 overflow-y-auto pr-2">
-                  <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap font-mono">
-                    {result.humanizedText}
-                  </p>
-
-                  <div className="mt-6 pt-4 border-t border-slate-700/50">
-                    <h4 className="text-xs font-bold text-slate-500 mb-2">Changes Applied</h4>
-                    <ul className="space-y-1">
-                      {result.changesMade.map((change, i) => (
-                        <li key={i} className="text-xs text-slate-400 flex items-start gap-2">
-                          <ArrowRight className="w-3 h-3 mt-0.5 text-emerald-500 shrink-0" />
-                          {change}
-                        </li>
-                      ))}
-                    </ul>
+                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 col-span-2">
+                  <div className="flex items-center gap-2 text-blue-800 font-semibold mb-1">
+                    <Settings2 className="w-5 h-5" />
+                    Optimization
+                  </div>
+                  <div className="text-blue-600 text-sm">
+                    {changes.length} enhancements made to sentence structure & vocabulary
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-slate-600">
-                <ShieldCheck className="w-12 h-12 mb-2 opacity-20" />
-                <p className="text-sm">Processed output will appear here.</p>
+
+              <div className="bg-gray-900 rounded-xl overflow-hidden shadow-xl">
+                <div className="flex items-center justify-between p-4 border-b border-gray-800">
+                  <span className="text-gray-400 font-medium">Humanized Output</span>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(humanizedText)}
+                    className="text-gray-400 hover:text-white transition-colors flex items-center gap-2 text-sm"
+                  >
+                    <Copy className="w-4 h-4" />
+                    Copy Text
+                  </button>
+                </div>
+                <div className="p-6">
+                  <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">
+                    {humanizedText}
+                  </p>
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
