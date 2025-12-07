@@ -4,29 +4,54 @@ import { HumanizerResult, HumanizerMode } from '../types';
 import { Wand2, Loader2, Copy, ShieldCheck, ArrowRight, Settings2 } from 'lucide-react';
 
 const ContentHumanizer: React.FC = () => {
-  const [text, setText] = useState('');
+  const [content, setContent] = useState('');
   const [mode, setMode] = useState<HumanizerMode>('Standard');
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<HumanizerResult | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [humanizedText, setHumanizedText] = useState('');
+  const [changes, setChanges] = useState<string[]>([]);
+  const [score, setScore] = useState<number | null>(null);
+  const [showKeyInput, setShowKeyInput] = useState(false);
+  const [userApiKey, setUserApiKey] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [showHumanized, setShowHumanized] = useState(false);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
-    setText(val);
+    setContent(val);
     if (!val.trim()) {
-      setResult(null);
+      setHumanizedText('');
+      setChanges([]);
+      setScore(null);
+      setShowHumanized(false);
+      setError(null);
     }
   };
 
   const handleHumanize = async () => {
-    if (!text) return;
-    setLoading(true);
+    if (!content.trim()) return;
+
+    setIsLoading(true);
+    setError(null);
+    setShowKeyInput(false);
+
     try {
-      const data = await humanizeContent(text, mode);
-      setResult(data);
-    } catch (e) {
-      alert("Humanization failed.");
+      // Use user provided key if available
+      const result = await humanizeContent(content, mode, userApiKey);
+
+      setHumanizedText(result.humanizedText);
+      setChanges(result.changesMade);
+      setScore(result.plagiarismRiskScore);
+      setShowHumanized(true);
+    } catch (err: any) {
+      console.error(err);
+      if (err.message === 'MISSING_API_KEY' || err.message?.includes('API key')) {
+        setShowKeyInput(true);
+        setError('API Key missing. Please enter your Google Gemini API Key below to continue (Free Tier).');
+      } else {
+        setError(err.message || 'Failed to humanize content. Please try again.');
+      }
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 

@@ -63,17 +63,15 @@ export const analyzeResume = async (resumeInput: ResumeInput, jobDescription: st
  */
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-export const humanizeContent = async (inputContent: string, mode: HumanizerMode = 'Standard'): Promise<HumanizerResult> => {
+export const humanizeContent = async (inputContent: string, mode: HumanizerMode = 'Standard', apiKeyOverride?: string): Promise<HumanizerResult> => {
     try {
         console.log("Using Google Gemini (Client-Side)...");
         // @ts-ignore
-        const apiKey = __GEMINI_API_KEY__;
+        const envKey = typeof __GEMINI_API_KEY__ !== 'undefined' ? __GEMINI_API_KEY__ : '';
+        const apiKey = apiKeyOverride || envKey;
 
         if (!apiKey) {
-            console.log("Gemini Key missing. Checking for HF Key fallback...");
-            // Optional: Fail gracefully or try HF? 
-            // For now, throw to alert user.
-            throw new Error("GEMINI_API_KEY is missing. Please add it to your environment variables.");
+            throw new Error("MISSING_API_KEY");
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
