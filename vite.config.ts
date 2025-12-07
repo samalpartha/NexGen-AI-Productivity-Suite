@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => {
       // Securely inject the HF API Key (check loadEnv, process.env, then fallback to provided key)
       // Split string to bypass GitHub secret scanning
       '__HF_API_KEY__': JSON.stringify(env.HF_API_KEY || process.env.HF_API_KEY || ('hf_' + 'PCogfsqeJyBxllkdkStBHtdVvNDWsOqlii')),
+      '__GEMINI_API_KEY__': JSON.stringify(env.GEMINI_API_KEY || process.env.GEMINI_API_KEY || ''),
     },
     resolve: {
       alias: {

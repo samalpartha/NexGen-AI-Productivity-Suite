@@ -61,67 +61,47 @@ export const analyzeResume = async (resumeInput: ResumeInput, jobDescription: st
 /**
  * Humanize content to bypass AI detection
  */
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 export const humanizeContent = async (inputContent: string, mode: HumanizerMode = 'Standard'): Promise<HumanizerResult> => {
     try {
-        // Client-side execution to bypass Vercel IP blocks
+        console.log("Using Google Gemini (Client-Side)...");
         // @ts-ignore
-        const apiKey = __HF_API_KEY__;
+        const apiKey = __GEMINI_API_KEY__;
 
         if (!apiKey) {
-            throw new Error('API Key configuration missing in client');
+            console.log("Gemini Key missing. Checking for HF Key fallback...");
+            // Optional: Fail gracefully or try HF? 
+            // For now, throw to alert user.
+            throw new Error("GEMINI_API_KEY is missing. Please add it to your environment variables.");
         }
 
-        let modeInstruction = "Rewrite unique, human-like.";
-        switch (mode) {
-            case 'Academic': modeInstruction += " Style: Academic."; break;
-            case 'Formal': modeInstruction += " Style: Formal."; break;
-            case 'Casual': modeInstruction += " Style: Casual."; break;
-            case 'Shorten': modeInstruction += " Concise."; break;
-            case 'Expand': modeInstruction += " Detailed."; break;
-        }
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-        const systemPrompt = "You are a rewriter. Rewrite input to be unique. Return JSON.";
-        const userPrompt = `Input: ${inputContent}\n\nFormat JSON:\n{\n"humanizedText": "...",\n"changesMade": ["..."],\n"plagiarismRiskScore": 98\n}`;
+        const prompt = `Rewrite the following text to bypass AI detection and make it 100% unique and human-like.
+        
+        Mode: ${mode}
+        
+        Input Text:
+        ${inputContent}
+        
+        Return ONLY valid JSON in this format:
+        {
+          "humanizedText": "The rewritten text...",
+          "changesMade": ["List of changes..."],
+          "plagiarismRiskScore": 99
+        }`;
 
-        console.log("Calling HF Client-Side (Zephyr 7B on Router)...");
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        let text = response.text();
 
-        const response = await fetch("https://router.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${apiKey}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                model: "HuggingFaceH4/zephyr-7b-beta",
-                messages: [
-                    { role: "system", content: systemPrompt },
-                    { role: "user", content: userPrompt }
-                ],
-                max_tokens: 1000,
-                temperature: 0.7,
-                stream: false
-            })
-        });
+        // Clean JSON
+        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
-        if (!response.ok) {
-            const err = await response.text();
-            throw new Error(`HF Errors: ${response.status} ${err}`);
-        }
+        return JSON.parse(text);
 
-        const data = await response.json();
-        const text = data.choices?.[0]?.message?.content || '';
-
-        let jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        try {
-            return JSON.parse(jsonStr);
-        } catch (e) {
-            return {
-                humanizedText: jsonStr,
-                changesMade: ["Rewritten (Parse Fallback)"],
-                plagiarismRiskScore: 99,
-                originalText: inputContent
-            } as any;
-        }
     } catch (error: any) {
         console.error('Humanization error:', error);
         throw error;
